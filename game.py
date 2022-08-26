@@ -128,6 +128,7 @@ class Grid:
         NUMBER_FONT = pygame.font.SysFont("Arial", 30)
         SCORE_FONT = pygame.font.SysFont("Arial", 100)
 
+        # Displays the integers on self.matrix
         for y in range(9):
             for x in range(9):
                 if self.matrix[y, x] != 0:
