@@ -125,6 +125,7 @@ class Grid:
         
         self.highlight_square(screen)
         
+        # Scoring mechanism to be added.
         NUMBER_FONT = pygame.font.SysFont("Arial", 30)
         SCORE_FONT = pygame.font.SysFont("Arial", 100)
 
