@@ -162,6 +162,7 @@ def main() -> None:
 
     # Event loop
     while 1:
+        # Sets the FPS to 60.
         clock.tick(60)
         for event in pygame.event.get():
             if event.type == QUIT:
