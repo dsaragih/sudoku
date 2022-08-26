@@ -1,6 +1,3 @@
-from turtle import pen
-
-
 try:
     import random
     import math
@@ -14,9 +11,6 @@ except ImportError as err:
     print("couldn't load module. %s" % (err))
     sys.exit(2)
 
-"""
-TODO: Board creation, Backtracking animation
-"""
 
 class Grid:
     """Grid on which the game is played"""
@@ -44,6 +38,7 @@ class Grid:
         self.create_game()
     
     def create_game(self) -> None:
+        """Initializes the game with a few numbers on the board."""
         self.solve()
         self.solution = copy.deepcopy(self.matrix)
         for _ in range(3):
@@ -92,6 +87,7 @@ class Grid:
             self._find_sub_grid_dupes(row, col, n))
     
     def _get_dupes(self, row: int, col: int, n: int) -> List[Tuple[int, int]]:
+        """Returns a list of coordinates of the locations of duplicated values."""
         res = [self._find_row_dupes(row, n), self._find_col_dupes(col, n), \
             self._find_sub_grid_dupes(row, col, n)]
         return list(filter(lambda x: x is not None, res))
@@ -103,9 +99,13 @@ class Grid:
                 if self.matrix[i, j] == 0:
                     return (i, j)
 
-    def clear(self) -> None:
-        """Clears the grid."""
+    def reset(self) -> None:
+        """Resets the grid."""
         self.matrix = np.zeros((9, 9), dtype=np.intp)
+        self.penciled_squares = {}
+        self.is_solved = False
+        self.selected_square = None
+        self.to_be_highlighted = None
         self.create_game()
 
     def solve(self) -> bool:
@@ -147,6 +147,7 @@ class Grid:
         self.screen.blit(background, (x + 1, y + 1))
     
     def highlight_dupes(self) -> None:
+        """Fills in the squares with duplicated values with a light red color."""
         fade = pygame.Surface((self.square_width - 2, self.square_width - 2))
         fade.convert()
         fade.fill((255, 114, 111))
@@ -156,6 +157,7 @@ class Grid:
             self.screen.blit(fade, (col * self.square_width + 1, row * self.square_width + 1))
     
     def pencil_selected_square(self, input: int) -> None:
+        """Adds the pencil inputs to {self.penciled_squares}."""
         if self.is_solved: return
 
         col, row = self.selected_square
@@ -170,6 +172,7 @@ class Grid:
             self.penciled_squares[(row, col)].append(input)
 
     def delete_pencils_on_square(self) -> None:
+        """Delete the pencil markings on the square."""
         col, row = self.selected_square
         row //= self.square_width
         col //= self.square_width
@@ -178,6 +181,7 @@ class Grid:
             self.penciled_squares[(row, col)].pop()
 
     def display_pencil_ints(self, row: int, col: int) -> None:
+        """Displays the pencil markings."""
         PENCIL_FONT = pygame.font.SysFont("Arial", 10)
         calibrating_text = PENCIL_FONT.render(str(1), 1, (0, 0, 0))
         x0 = (self.square_width - calibrating_text.get_width())//2 + self.square_width \
@@ -219,6 +223,7 @@ class Grid:
             self.to_be_highlighted = self._get_dupes(row, col, input)
 
     def update_game_state(self) -> None:
+        """Updates the game state."""
         self.is_solved = 0 not in self.matrix
         
     def draw(self) -> None:
@@ -302,7 +307,7 @@ def main() -> None:
                 if event.key == K_SPACE:
                     grid.solve()
                 if event.key == K_r:
-                    grid.clear()
+                    grid.reset()
 
         screen.blit(background, (0, 0))
         grid.draw()
