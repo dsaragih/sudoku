@@ -1,11 +1,14 @@
+from turtle import pen
+
+
 try:
     import random
     import math
     import pygame
     import sys
-    import time
+    import copy
     import numpy as np
-    from typing import Tuple, List
+    from typing import Tuple, List, Dict
     from pygame.locals import *
 except ImportError as err:
     print("couldn't load module. %s" % (err))
@@ -15,17 +18,18 @@ except ImportError as err:
 TODO: Board creation, Backtracking animation
 """
 
-
 class Grid:
     """Grid on which the game is played"""
     width: int
     height: int
     square_width: int
     matrix: np.array
+    penciled_squares: Dict[Tuple[int, int], List[int]]
     screen: pygame.display
     is_solved: bool
     to_be_highlighted: List[Tuple[int, int]]
     selected_square: Tuple[int, int]
+    solution: np.array
 
     def __init__(self, width: int, height: int, screen: pygame.display) -> None:
         self.width = width
@@ -33,12 +37,15 @@ class Grid:
         self.square_width = width // 9
         self.matrix = np.zeros((9, 9), dtype=np.intp)
         self.screen = screen
+        self.penciled_squares = {}
+        self.is_solved = False
         self.selected_square = None
         self.to_be_highlighted = None
         self.create_game()
     
     def create_game(self) -> None:
         self.solve()
+        self.solution = copy.deepcopy(self.matrix)
         for _ in range(3):
             # Swaps rows
             r1, r2 = random.sample(range(3), 2)
@@ -105,8 +112,6 @@ class Grid:
         """Backtracks to find the solution to the Sudoku."""
         empty_square = self._find_empty()
         if not empty_square:
-            # Solved
-            self.is_solved = True
             return True
 
         row = empty_square[0]
@@ -120,6 +125,7 @@ class Grid:
                 self.matrix[row, col] = 0
         return False
 
+# --------------------------------------------
     def set_selected_square(self, pos: Tuple[float, float]) -> None:
         """Updates the selected square according to where the player clicked."""
         x = math.floor(pos[0] / self.square_width) * self.square_width
@@ -145,25 +151,76 @@ class Grid:
         fade.convert()
         fade.fill((255, 114, 111))
         
-        for alpha in range(300, 0, -1):
-            fade.set_alpha(60)
-            for (row, col) in self.to_be_highlighted:
-                self.screen.blit(fade, (col * self.square_width + 1, row * self.square_width + 1))
+        fade.set_alpha(60)
+        for (row, col) in self.to_be_highlighted:
+            self.screen.blit(fade, (col * self.square_width + 1, row * self.square_width + 1))
+    
+    def pencil_selected_square(self, input: int) -> None:
+        if self.is_solved: return
 
-    def update_selected_square(self, input: int) -> None:
-        """Updates the number on the selected square."""
         col, row = self.selected_square
         row //= self.square_width
         col //= self.square_width
 
-        is_safe = self._input_safe(row, col, input)
-        if is_safe and not self.is_solved:
-            self.matrix[row, col] = input
-        elif not is_safe:
-            self.to_be_highlighted = self._get_dupes(row, col, input)
-        
-        self.is_solved = 0 not in self.matrix
+        if self.matrix[row, col] != 0: return
 
+        if (row, col) not in self.penciled_squares:
+            self.penciled_squares[(row, col)] = [input]
+        elif input not in self.penciled_squares[(row, col)]:
+            self.penciled_squares[(row, col)].append(input)
+
+    def delete_pencils_on_square(self) -> None:
+        col, row = self.selected_square
+        row //= self.square_width
+        col //= self.square_width
+
+        if (row, col) in self.penciled_squares:
+            self.penciled_squares[(row, col)].pop()
+
+    def display_pencil_ints(self, row: int, col: int) -> None:
+        PENCIL_FONT = pygame.font.SysFont("Arial", 10)
+        calibrating_text = PENCIL_FONT.render(str(1), 1, (0, 0, 0))
+        x0 = (self.square_width - calibrating_text.get_width())//2 + self.square_width \
+                * col - 2 * calibrating_text.get_width()
+        y0 = (self.square_width - calibrating_text.get_height())//2 + self.square_width \
+                * row - 2 * calibrating_text.get_height()
+
+        for int in sorted(self.penciled_squares.get((row, col), [])):
+            pencil_text = PENCIL_FONT.render(str(int), 1, (0, 0, 0))
+            dx = (int - 1) % 3
+            dy = (int - 1) // 3
+            font_x = x0 + 2 * dx * calibrating_text.get_width()
+            font_y = y0 + 2 * dy * calibrating_text.get_height()
+            self.screen.blit(pencil_text, (font_x, font_y))
+
+    def write_selected_square(self, input: int) -> None:
+        """Writes the number on the selected square."""
+        if self.is_solved: return
+
+        col, row = self.selected_square
+        row //= self.square_width
+        col //= self.square_width
+
+        if input == 0:
+            self.matrix[row, col] = input
+            self.to_be_highlighted = None
+            self.penciled_squares.pop((row, col), None)
+            return
+
+        is_safe = self._input_safe(row, col, input)
+        is_in_solution = self.solution[row, col] == input
+        if is_in_solution:
+            self.matrix[row, col] = input
+            self.to_be_highlighted = None
+            self.penciled_squares.pop((row, col), None)
+        elif is_safe:
+            self.to_be_highlighted = [(row, col)]
+        else:
+            self.to_be_highlighted = self._get_dupes(row, col, input)
+
+    def update_game_state(self) -> None:
+        self.is_solved = 0 not in self.matrix
+        
     def draw(self) -> None:
         """Draws everything on the grid."""
         for div in range(3 * self.square_width, self.width, 3 * self.square_width):
@@ -187,6 +244,7 @@ class Grid:
         # Displays the integers on self.matrix
         for y in range(9):
             for x in range(9):
+                self.display_pencil_ints(y, x)
                 if self.matrix[y, x] != 0:
                     number_text = NUMBER_FONT.render(
                         str(self.matrix[y, x]), 1, (0, 0, 0))
@@ -210,6 +268,9 @@ def main() -> None:
     # Initialize the grid
     grid = Grid(640, 640, screen)
 
+    # Initialize mode
+    pencil_mode = False
+
     # Blit everything to the screen
     screen.blit(background, (0, 0))
     grid.draw()
@@ -221,6 +282,7 @@ def main() -> None:
     while 1:
         # Sets the FPS to 60.
         clock.tick(60)
+        grid.update_game_state()
         for event in pygame.event.get():
             if event.type == QUIT:
                 return
@@ -229,10 +291,14 @@ def main() -> None:
                 grid.set_selected_square(pos)
 
             elif event.type == KEYDOWN:
+                if event.key == K_m:
+                    pencil_mode = not pencil_mode
                 if event.key == K_BACKSPACE:
-                    grid.update_selected_square(0)
-                if event.unicode.isnumeric():
-                    grid.update_selected_square(int(event.unicode))
+                    if pencil_mode: grid.delete_pencils_on_square()
+                    else: grid.write_selected_square(0)
+                if event.unicode.isnumeric() and int(event.unicode) != 0:
+                    if pencil_mode: grid.pencil_selected_square(int(event.unicode))
+                    else: grid.write_selected_square(int(event.unicode))
                 if event.key == K_SPACE:
                     grid.solve()
                 if event.key == K_r:
@@ -240,8 +306,16 @@ def main() -> None:
 
         screen.blit(background, (0, 0))
         grid.draw()
+        if grid.is_solved: 
+            font = pygame.font.Font(None, 90)
+            text = font.render("Solved!", 1, (255, 42, 38))
+            textpos = text.get_rect()
+            textpos.centerx = background.get_rect().centerx
+            textpos.centery = background.get_rect().centery
+            screen.blit(text, textpos)
+
         pygame.display.flip()
-        pygame.time.wait(100)
+
 
 
 if __name__ == '__main__':
