@@ -23,7 +23,6 @@ class Grid:
     is_solved: bool
     to_be_highlighted: List[Tuple[int, int]]
     selected_square: Tuple[int, int]
-    solution: np.array
 
     def __init__(self, width: int, height: int, screen: pygame.display) -> None:
         self.width = width
@@ -40,7 +39,6 @@ class Grid:
     def create_game(self) -> None:
         """Initializes the game with a few numbers on the board."""
         self.solve()
-        self.solution = copy.deepcopy(self.matrix)
         for _ in range(3):
             # Swaps rows
             r1, r2 = random.sample(range(3), 2)
@@ -213,13 +211,10 @@ class Grid:
             return
 
         is_safe = self._input_safe(row, col, input)
-        is_in_solution = self.solution[row, col] == input
-        if is_in_solution:
+        if is_safe:
             self.matrix[row, col] = input
             self.to_be_highlighted = None
             self.penciled_squares.pop((row, col), None)
-        elif is_safe:
-            self.to_be_highlighted = [(row, col)]
         else:
             self.to_be_highlighted = self._get_dupes(row, col, input)
 
