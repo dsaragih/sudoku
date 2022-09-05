@@ -35,7 +35,11 @@ class Grid:
         self.is_solved = False
         self.selected_square = None
         self.to_be_highlighted = None
-        self.create_game()
+        # self.create_game()
+        for i in range(9):
+            self.matrix[0, i] = i + 1
+        self.matrix[0, 0] = 0
+        self.matrix[1, 0] = 1
     
     def create_game(self) -> None:
         """Initializes the game with a few numbers on the board."""
@@ -51,11 +55,12 @@ class Grid:
         for _ in range(3):
             # Swaps columns
             c1, c2 = random.sample(range(3), 2)
-            self.matrix[[c1, c2]] = self.matrix[[c2, c1]]
-            self.matrix[[c1 + 3, c2 + 3]] = self.matrix[[c2 + 3, c1 + 3]]
-            self.matrix[[c1 + 6, c2 + 6]] = self.matrix[[c2 + 6, c1 + 6]]
+            self.matrix[:, [c1, c2]] = self.matrix[:, [c2, c1]]
+            self.matrix[:, [c1 + 3, c2 + 3]] = self.matrix[:, [c2 + 3, c1 + 3]]
+            self.matrix[:, [c1 + 6, c2 + 6]] = self.matrix[:, [c2 + 6, c1 + 6]]
 
         for _ in range(30):
+            # Removes values while maintaining rotational symmetry.
             x, y = random.choice(range(-4, 5)), random.choice(range(-4, 5))
             self.matrix[x + 4, y + 4] = 0
             self.matrix[4 - x, 4 - y] = 0
