@@ -35,11 +35,7 @@ class Grid:
         self.is_solved = False
         self.selected_square = None
         self.to_be_highlighted = None
-        # self.create_game()
-        for i in range(9):
-            self.matrix[0, i] = i + 1
-        self.matrix[0, 0] = 0
-        self.matrix[1, 0] = 1
+        self.create_game()
     
     def create_game(self) -> None:
         """Initializes the game with a few numbers on the board."""
